@@ -6,20 +6,24 @@ export const getContacts = async () => {
     return res.json();
 };
 
-export const createContact = async (contact) => {
+export const createContact = async (contact, fcmToken = null) => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (fcmToken) headers['x-fcm-token'] = fcmToken;
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(contact),
     });
     if (!res.ok) throw new Error('Failed to create');
     return res.json();
 };
 
-export const updateContact = async (id, contact) => {
+export const updateContact = async (id, contact, fcmToken = null) => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (fcmToken) headers['x-fcm-token'] = fcmToken;
     const res = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(contact),
     });
     if (!res.ok) throw new Error('Failed to update');

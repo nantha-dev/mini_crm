@@ -3,7 +3,7 @@ import { getContacts, createContact, updateContact, deleteContact } from './api'
 import ContactList from './components/ContactList';
 import ContactForm from './components/ContactForm';
 import Toast from './components/Toast';
-// optional, but we'll use emojis for simplicity
+import { requestFirebaseNotificationPermission, onMessageListener } from './firebase';
 
 // Reusable shadcn/ui styled components
 export function Button({ children, onClick, variant = 'primary', type = 'button', disabled, className = '' }) {
@@ -51,6 +51,25 @@ function App() {
     const [showForm, setShowForm] = useState(false);
     const [toast, setToast] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [fcmToken, setFcmToken] = useState(null);
+
+    useEffect(() => {
+        // Request permission and get token on load
+        requestFirebaseNotificationPermission().then((token) => {
+            if (token) setFcmToken(token);
+        });
+
+        // Listen to foreground notifications
+        const unsubscribe = onMessageListener().then(payload => {
+            console.log('Foreground message received:', payload);
+            showToast(`${payload.notification.title}: ${payload.notification.body}`, 'info');
+        }).catch(err => console.log('failed: ', err));
+        
+        return () => {
+            // Note: in a real app, onMessage listener returns an unsubscribe function.
+            // Since we wrapped it in a promise, we handle it simply.
+        };
+    }, []);
 
     const loadContacts = useCallback(async () => {
         try {
@@ -94,15 +113,13 @@ function App() {
     const handleSave = async (contactData) => {
         try {
             if (editingContact) {
-                const updated = await updateContact(editingContact.id, contactData);
+                const updated = await updateContact(editingContact.id, contactData, fcmToken);
                 setContacts(contacts.map(c => c.id === updated.id ? updated : c));
                 showToast('Contact updated!', 'success');
-                sendReminderNotification(updated);
             } else {
-                const newContact = await createContact(contactData);
+                const newContact = await createContact(contactData, fcmToken);
                 setContacts([...contacts, newContact]);
                 showToast('Contact added!', 'success');
-                sendReminderNotification(newContact);
             }
             setShowForm(false);
             setEditingContact(null);
